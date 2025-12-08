@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/resume/generate-pdf").permitAll()
                         .requestMatchers("/resume/templates").permitAll()
                         .requestMatchers("/resume/upload").permitAll()
+                        .requestMatchers("/resume/download").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/user/login", "/user/signup", "/user/forgotPassword").permitAll() // Allow error page
                         .anyRequest().authenticated()
