@@ -30,8 +30,8 @@ public class Resume implements Serializable {
     @Column(name="original_filename")
     private String originalFilename;
 
-    @Lob
-    @Column(name="extracted_latex")
+
+    @Column(name="extracted_latex",columnDefinition = "text")
     private String extractedLatex;
 
     @Column(name="job_description", length = 5000)
@@ -40,8 +40,8 @@ public class Resume implements Serializable {
     @Column(name="template_id")
     private String templateId;
 
-    @Lob
-    @Column(name="transformed_latex")
+
+    @Column(name="transformed_latex", columnDefinition = "text")
     private String transformedLatex;
 
     @Lob

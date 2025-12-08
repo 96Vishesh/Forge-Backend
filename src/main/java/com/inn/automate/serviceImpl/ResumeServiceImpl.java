@@ -6,6 +6,7 @@ import com.inn.automate.POJO.Resume;
 import com.inn.automate.POJO.ResumeTemplate;
 import com.inn.automate.DAO.ResumeDAO;
 import com.inn.automate.DAO.ResumeTemplateDAO;
+import com.inn.automate.Service.LatexToPdfService;
 import com.inn.automate.Service.ResumeService;
 import com.inn.automate.constants.AutoConstants;
 import com.inn.automate.utils.AutoUtils;
@@ -35,6 +36,9 @@ public class ResumeServiceImpl implements ResumeService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private LatexToPdfService latexToPdfService;
 
     @Value("${gemini.api.key}")
     private String geminiApiKey;
@@ -364,7 +368,7 @@ public class ResumeServiceImpl implements ResumeService {
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + geminiApiKey;
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
 
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
 
@@ -390,15 +394,28 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     private byte[] generatePdfFromLatex(String latexCode) {
-        // TODO: Implement LaTeX to PDF conversion
-        // Options:
-        // 1. Use external service like LaTeX.Online API
-        // 2. Use local LaTeX installation with ProcessBuilder
-        // 3. Use Java libraries like JLaTeXMath for simple documents
+        try {
+            log.info("Generating PDF from LaTeX code");
 
-        log.info("Generating PDF from LaTeX code");
+            // Validate LaTeX before attempting conversion
+            if (!latexToPdfService.isValidLatex(latexCode)) {
+                log.warn("Invalid LaTeX structure detected");
+                throw new RuntimeException("Invalid LaTeX code structure");
+            }
 
-        // Placeholder - return empty PDF
-        return new byte[0];
+            // Convert LaTeX to PDF using the service
+            byte[] pdfBytes = latexToPdfService.convertLatexToPdf(latexCode);
+
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                throw new RuntimeException("PDF generation returned empty result");
+            }
+
+            log.info("PDF generated successfully, size: {} bytes", pdfBytes.length);
+            return pdfBytes;
+
+        } catch (Exception e) {
+            log.error("Error generating PDF from LaTeX", e);
+            throw new RuntimeException("Failed to generate PDF: " + e.getMessage(), e);
+        }
     }
 }
