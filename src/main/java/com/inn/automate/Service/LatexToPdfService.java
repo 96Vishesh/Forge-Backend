@@ -9,11 +9,7 @@ import org.springframework.web.client.RestTemplate;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -21,110 +17,55 @@ public class LatexToPdfService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    // Path to pdflatex - configurable via application.properties
+    @Value("${latex.pdflatex.path:C:\\\\Users\\\\xghos\\\\AppData\\\\Local\\\\Programs\\\\MiKTeX\\\\miktex\\\\bin\\\\x64\\\\pdflatex.exe}")
+    private String pdflatexPath;
+
     /**
-     * Convert LaTeX code to PDF using LaTeX.Online API
-     * This is a free service that compiles LaTeX to PDF
+     * Convert LaTeX code to PDF
+     * Primary method: Local pdflatex (MiKTeX)
+     * Fallback: External APIs
      */
     public byte[] convertLatexToPdf(String latexCode) {
         try {
             log.info("Starting LaTeX to PDF conversion");
+            log.debug("LaTeX code length: {} characters", latexCode.length());
 
-            // Method 1: Use LaTeX.Online API (Recommended - Free & Easy)
-            return convertUsingLatexOnline(latexCode);
+            // Primary Method: Use local pdflatex (most reliable)
+            byte[] pdfBytes = convertUsingLocalPdfLatex(latexCode);
 
-            // Method 2: Use local pdflatex (Uncomment if you have LaTeX installed)
-            // return convertUsingLocalPdfLatex(latexCode);
-
-        } catch (Exception e) {
-            log.error("Error converting LaTeX to PDF", e);
-            throw new RuntimeException("Failed to convert LaTeX to PDF: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Method 1: Use LaTeX.Online API (Free service)
-     * API Documentation: https://latexonline.cc/
-     */
-    private byte[] convertUsingLatexOnline(String latexCode) {
-        try {
-            // LaTeX.Online endpoint
-            String url = "https://latexonline.cc/compile";
-
-            // Prepare the request
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.TEXT_PLAIN);
-
-            HttpEntity<String> entity = new HttpEntity<>(latexCode, headers);
-
-            // Make the API call
-            log.info("Calling LaTeX.Online API");
-            ResponseEntity<byte[]> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    entity,
-                    byte[].class
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                log.info("PDF generated successfully, size: {} bytes", response.getBody().length);
-                return response.getBody();
+            // Verify the PDF is valid
+            if (pdfBytes != null && isPdfValid(pdfBytes)) {
+                log.info("✅ PDF generated successfully using local pdflatex: {} bytes", pdfBytes.length);
+                return pdfBytes;
             } else {
-                throw new RuntimeException("Failed to generate PDF from LaTeX.Online");
+                log.warn("❌ Local pdflatex produced invalid output, trying external APIs");
+                throw new RuntimeException("Local PDF generation produced invalid output");
             }
 
         } catch (Exception e) {
-            log.error("Error using LaTeX.Online: {}", e.getMessage());
-            // Fallback to alternative method
-            return convertUsingTexLive(latexCode);
+            log.warn("Local pdflatex failed: {}. Trying external APIs...", e.getMessage());
+            
+            // Fallback to external APIs
+            try {
+                byte[] pdfBytes = convertUsingLatexOnline(latexCode);
+                if (pdfBytes != null && isPdfValid(pdfBytes)) {
+                    log.info("✅ PDF generated using external API: {} bytes", pdfBytes.length);
+                    return pdfBytes;
+                }
+            } catch (Exception ex) {
+                log.error("External API also failed: {}", ex.getMessage());
+            }
+            
+            // Last resort: return error PDF
+            log.error("All PDF generation methods failed");
+            return getMinimalPdfBytes();
         }
     }
 
     /**
-     * Method 2: Use TeXLive.net API (Alternative free service)
-     */
-    private byte[] convertUsingTexLive(String latexCode) {
-        try {
-            log.info("Trying TeXLive.net API as fallback");
-
-            // Create a multipart request with the LaTeX file
-            String url = "https://texlive.net/cgi-bin/latexcgi";
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            Map<String, String> requestBody = new HashMap<>();
-            requestBody.put("code", latexCode);
-            requestBody.put("command", "pdflatex");
-
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
-
-            ResponseEntity<byte[]> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    entity,
-                    byte[].class
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                log.info("PDF generated using TeXLive.net, size: {} bytes", response.getBody().length);
-                return response.getBody();
-            }
-
-            throw new RuntimeException("Both LaTeX services failed");
-
-        } catch (Exception e) {
-            log.error("All PDF generation methods failed: {}", e.getMessage());
-            // Return a placeholder PDF with error message
-            return generateErrorPdf();
-        }
-    }
-
-    /**
-     * Method 3: Use local pdflatex installation
-     * Requirements: LaTeX must be installed on the server
-     * Install on Ubuntu: sudo apt-get install texlive-full
-     * Install on Mac: brew install --cask mactex
-     * Install on Windows: Download MiKTeX
+     * Use local pdflatex installation (MiKTeX)
+     * This is the most reliable method
      */
     private byte[] convertUsingLocalPdfLatex(String latexCode) throws IOException, InterruptedException {
         log.info("Using local pdflatex installation");
@@ -139,123 +80,176 @@ public class LatexToPdfService {
             // Write LaTeX code to file
             Files.write(texFile, latexCode.getBytes());
 
+            // Check if pdflatex exists
+            File pdflatexExe = new File(pdflatexPath);
+            String pdflatexCmd = pdflatexExe.exists() ? pdflatexPath : "pdflatex";
+            
+            log.info("Using pdflatex command: {}", pdflatexCmd);
+
             // Run pdflatex command
             ProcessBuilder processBuilder = new ProcessBuilder(
-                    "pdflatex",
+                    pdflatexCmd,
                     "-interaction=nonstopmode",
                     "-output-directory=" + tempDir.toString(),
                     texFile.toString()
             );
 
             processBuilder.redirectErrorStream(true);
+            processBuilder.directory(tempDir.toFile());
             Process process = processBuilder.start();
 
-            // Read output
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                log.debug("pdflatex: {}", line);
+            // Read output for logging
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                    log.debug("pdflatex: {}", line);
+                }
             }
 
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                throw new RuntimeException("pdflatex failed with exit code: " + exitCode);
+            // Wait for process to complete (max 60 seconds)
+            boolean finished = process.waitFor(60, java.util.concurrent.TimeUnit.SECONDS);
+            
+            if (!finished) {
+                process.destroyForcibly();
+                throw new RuntimeException("pdflatex timed out after 60 seconds");
             }
 
-            // Read generated PDF
+            int exitCode = process.exitValue();
+            log.info("pdflatex exit code: {}", exitCode);
+
+            // Check if PDF was created
             if (Files.exists(pdfFile)) {
                 byte[] pdfBytes = Files.readAllBytes(pdfFile);
-                log.info("PDF generated locally, size: {} bytes", pdfBytes.length);
+                log.info("PDF created successfully: {} bytes", pdfBytes.length);
                 return pdfBytes;
             } else {
-                throw new RuntimeException("PDF file not generated");
+                log.error("PDF file was not created. pdflatex output:\n{}", output.toString().substring(0, Math.min(1000, output.length())));
+                throw new RuntimeException("PDF file was not generated by pdflatex");
             }
 
         } finally {
             // Cleanup temporary files
-            cleanupTempFiles(tempDir);
+            try {
+                Files.deleteIfExists(texFile);
+                Files.deleteIfExists(pdfFile);
+                Files.deleteIfExists(tempDir.resolve(fileName + ".aux"));
+                Files.deleteIfExists(tempDir.resolve(fileName + ".log"));
+                Files.deleteIfExists(tempDir);
+            } catch (Exception e) {
+                log.warn("Failed to cleanup temp files: {}", e.getMessage());
+            }
         }
     }
 
     /**
-     * Generate a simple error PDF when LaTeX compilation fails
+     * Fallback: Use LaTeX.Online API (Free service)
      */
-    private byte[] generateErrorPdf() {
+    private byte[] convertUsingLatexOnline(String latexCode) {
         try {
-            log.info("Generating error placeholder PDF");
+            String url = "https://latexonline.cc/compile?text=" +
+                    java.net.URLEncoder.encode(latexCode, "UTF-8");
 
-            String errorLatex = "\\documentclass{article}\n" +
-                    "\\usepackage[margin=1in]{geometry}\n" +
-                    "\\begin{document}\n" +
-                    "\\begin{center}\n" +
-                    "\\Large\\textbf{Resume Generation Error}\n" +
-                    "\\end{center}\n" +
-                    "\\vspace{1cm}\n" +
-                    "The resume could not be generated due to a LaTeX compilation error.\n\n" +
-                    "Please try again or contact support.\n" +
-                    "\\end{document}";
+            log.info("Calling LaTeX.Online API");
 
-            // Try to compile the simple error message
-            return convertUsingLatexOnline(errorLatex);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_PDF));
+
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<byte[]> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    entity,
+                    byte[].class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                byte[] responseBytes = response.getBody();
+
+                if (isPdfValid(responseBytes)) {
+                    log.info("PDF generated successfully via API, size: {} bytes", responseBytes.length);
+                    return responseBytes;
+                } else {
+                    String preview = new String(responseBytes, 0, Math.min(100, responseBytes.length));
+                    log.warn("Response is not a valid PDF. Received: {}", preview);
+                    throw new RuntimeException("API returned invalid data instead of PDF");
+                }
+            } else {
+                throw new RuntimeException("Failed to generate PDF - HTTP " + response.getStatusCode());
+            }
 
         } catch (Exception e) {
-            log.error("Even error PDF generation failed", e);
-            // Return minimal valid PDF bytes
-            return getMinimalPdfBytes();
+            log.error("Error using LaTeX.Online: {}", e.getMessage());
+            throw new RuntimeException("External API failed: " + e.getMessage());
         }
     }
 
     /**
-     * Cleanup temporary files
+     * Verify if bytes are a valid PDF (public for use by other services)
+     * Checks both PDF header (%PDF) and EOF marker (%%EOF)
      */
-    private void cleanupTempFiles(Path tempDir) {
-        try {
-            Files.walk(tempDir)
-                    .sorted((a, b) -> -a.compareTo(b)) // Reverse order for deletion
-                    .forEach(path -> {
-                        try {
-                            Files.delete(path);
-                        } catch (IOException e) {
-                            log.warn("Failed to delete temp file: {}", path);
-                        }
-                    });
-        } catch (IOException e) {
-            log.warn("Failed to cleanup temp directory: {}", tempDir);
+    public boolean isPdfValid(byte[] pdfBytes) {
+        if (pdfBytes == null || pdfBytes.length < 8) {
+            return false;
         }
+
+        // Check PDF magic number: %PDF
+        boolean hasPdfHeader = pdfBytes[0] == '%' &&
+                pdfBytes[1] == 'P' &&
+                pdfBytes[2] == 'D' &&
+                pdfBytes[3] == 'F';
+        
+        if (!hasPdfHeader) {
+            return false;
+        }
+        
+        // Additional check: Look for %%EOF near the end (valid PDF structure)
+        String tail = new String(pdfBytes, Math.max(0, pdfBytes.length - 20), 
+                Math.min(20, pdfBytes.length));
+        boolean hasEofMarker = tail.contains("%%EOF");
+        
+        return hasEofMarker;
     }
 
     /**
-     * Get minimal valid PDF bytes (empty PDF)
-     */
-    private byte[] getMinimalPdfBytes() {
-        // This is a minimal valid PDF structure
-        String minimalPdf = "%PDF-1.4\n" +
-                "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n" +
-                "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n" +
-                "3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources 4 0 R /MediaBox [0 0 612 792] /Contents 5 0 R >>\nendobj\n" +
-                "4 0 obj\n<< /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >>\nendobj\n" +
-                "5 0 obj\n<< /Length 44 >>\nstream\nBT /F1 12 Tf 100 700 Td (Resume Error) Tj ET\nendstream\nendobj\n" +
-                "xref\n0 6\n0000000000 65535 f\n" +
-                "0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\n" +
-                "0000000214 00000 n\n0000000304 00000 n\n" +
-                "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n397\n%%EOF";
-
-        return minimalPdf.getBytes();
-    }
-
-    /**
-     * Validate LaTeX syntax (basic validation)
+     * Validate LaTeX structure
      */
     public boolean isValidLatex(String latexCode) {
         if (latexCode == null || latexCode.trim().isEmpty()) {
             return false;
         }
+        
+        // Basic LaTeX structure check
+        return latexCode.contains("\\documentclass") && 
+               latexCode.contains("\\begin{document}") && 
+               latexCode.contains("\\end{document}");
+    }
 
-        // Check for basic LaTeX structure
-        boolean hasDocumentClass = latexCode.contains("\\documentclass");
-        boolean hasBeginDocument = latexCode.contains("\\begin{document}");
-        boolean hasEndDocument = latexCode.contains("\\end{document}");
-
-        return hasDocumentClass && hasBeginDocument && hasEndDocument;
+    /**
+     * Generate a minimal valid PDF with error message
+     * This is used as absolute last resort
+     */
+    private byte[] getMinimalPdfBytes() {
+        // A minimal valid PDF with an error message
+        String pdfContent = 
+            "%PDF-1.4\n" +
+            "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n" +
+            "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n" +
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] " +
+            "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n" +
+            "4 0 obj\n<< /Length 180 >>\nstream\n" +
+            "BT\n/F1 18 Tf\n50 700 Td\n(Resume Generation Error) Tj\n" +
+            "/F1 12 Tf\n0 -30 Td\n(The resume could not be generated due to) Tj\n" +
+            "0 -20 Td\n(technical difficulties. Please try again or) Tj\n" +
+            "0 -20 Td\n(contact support for assistance.) Tj\nET\n" +
+            "endstream\nendobj\n" +
+            "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n" +
+            "xref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n" +
+            "0000000115 00000 n \n0000000266 00000 n \n0000000498 00000 n \n" +
+            "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n576\n%%EOF";
+        
+        return pdfContent.getBytes();
     }
 }

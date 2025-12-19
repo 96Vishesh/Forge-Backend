@@ -10,10 +10,21 @@ import java.util.Map;
 @RequestMapping(path="/resume")
 public interface ResumeRest {
 
-    @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(path = "/upload")
     ResponseEntity<String> uploadResume(
-            @RequestPart("file") MultipartFile file,
-            @RequestPart("jobDescription") String jobDescription
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("jobDescription") String jobDescription
+    );
+
+    /**
+     * NEW: Combined API - Upload, Transform, and Generate PDF in one call
+     * This is the recommended endpoint for end-users
+     */
+    @PostMapping(path = "/create")
+    ResponseEntity<String> createAndTransformResume(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("jobDescription") String jobDescription,
+            @RequestParam("templateId") String templateId
     );
 
     @GetMapping(path = "/templates")

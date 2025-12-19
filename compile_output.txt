@@ -1,0 +1,67 @@
+﻿[INFO] Scanning for projects...
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for com.inn.automate:com.inn.automate:jar:0.0.1-SNAPSHOT
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: io.jsonwebtoken:jjwt-api:jar -> version 0.12.6 vs 0.11.5 @ line 57, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.springframework.boot:spring-boot-starter-mail:jar -> duplicate declaration of version (?) @ line 78, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: io.jsonwebtoken:jjwt-api:jar -> duplicate declaration of version 0.12.6 @ line 88, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: io.jsonwebtoken:jjwt-impl:jar -> version 0.11.5 vs 0.12.6 @ line 95, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: io.jsonwebtoken:jjwt-jackson:jar -> version 0.11.5 vs 0.12.6 @ line 103, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.springframework.boot:spring-boot-starter-data-jpa:jar -> duplicate declaration of version (?) @ line 117, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.postgresql:postgresql:jar -> duplicate declaration of version (?) @ line 129, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.xhtmlrenderer:flying-saucer-pdf:jar -> duplicate declaration of version 9.1.22 @ line 212, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.fasterxml.jackson.core:jackson-databind:jar -> duplicate declaration of version (?) @ line 226, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: jakarta.annotation:jakarta.annotation-api:jar -> version (?) vs 2.1.1 @ line 234, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.projectlombok:lombok:jar -> version ${lombok.version} vs (?) @ line 255, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.springframework.boot:spring-boot-starter-web:jar -> duplicate declaration of version (?) @ line 262, column 21
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] 
+[INFO] -----------------< com.inn.automate:com.inn.automate >------------------
+[INFO] Building Automation Services 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ com.inn.automate ---
+[INFO] Deleting C:\Users\xghos\Desktop\New Project\com.inn.auto\target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ com.inn.automate ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ com.inn.automate ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 25 source files with javac [debug release 17] to target\classes
+[INFO] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/JWT/JwtUtil.java: C:\Users\xghos\Desktop\New Project\com.inn.auto\src\main\java\com\inn\automate\JWT\JwtUtil.java uses or overrides a deprecated API.
+[INFO] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/JWT/JwtUtil.java: Recompile with -Xlint:deprecation for details.
+[INFO] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/serviceImpl/ResumeServiceImpl.java: Some input files use unchecked or unsafe operations.
+[INFO] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/serviceImpl/ResumeServiceImpl.java: Recompile with -Xlint:unchecked for details.
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/Service/ResumeExtractorService.java:[106,32] package org.apache.poi.hwpf does not exist
+[ERROR] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/Service/ResumeExtractorService.java:[107,40] package org.apache.poi.hwpf does not exist
+[ERROR] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/Service/ResumeExtractorService.java:[109,42] package org.apache.poi.hwpf.extractor does not exist
+[ERROR] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/Service/ResumeExtractorService.java:[110,50] package org.apache.poi.hwpf.extractor does not exist
+[INFO] 4 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.262 s
+[INFO] Finished at: 2025-12-19T15:12:11+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project com.inn.automate: Compilation failure: Compilation failure: 
+[ERROR] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/Service/ResumeExtractorService.java:[106,32] package org.apache.poi.hwpf does not exist
+[ERROR] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/Service/ResumeExtractorService.java:[107,40] package org.apache.poi.hwpf does not exist
+[ERROR] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/Service/ResumeExtractorService.java:[109,42] package org.apache.poi.hwpf.extractor does not exist
+[ERROR] /C:/Users/xghos/Desktop/New Project/com.inn.auto/src/main/java/com/inn/automate/Service/ResumeExtractorService.java:[110,50] package org.apache.poi.hwpf.extractor does not exist
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
