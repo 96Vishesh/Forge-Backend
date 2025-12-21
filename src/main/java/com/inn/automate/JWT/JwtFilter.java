@@ -27,36 +27,45 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private Claims claims = null;
     private String userName = null;
-    //|/user/signup
+
     @Override
     protected void doFilterInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, FilterChain filterChain) throws ServletException, IOException {
-        if (httpServletRequest.getServletPath().matches("/user/login|/user/forgotPassword")) {
+        String path = httpServletRequest.getServletPath();
+        
+        // Skip JWT validation only for truly public endpoints (login, signup, forgot password)
+        if (path.matches("/user/login|/user/forgotPassword|/user/signup")) {
             filterChain.doFilter(httpServletRequest, httpServletResponse);
-        } else {
+            return;
+        }
 
-            String authorizationHeader = httpServletRequest.getHeader("Authorization");
-            String token = null;
+        String authorizationHeader = httpServletRequest.getHeader("Authorization");
+        String token = null;
 
-            if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-                token = authorizationHeader.substring(7);
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            token = authorizationHeader.substring(7);
+            try {
                 userName = jwtUtil.extractUsername(token);
                 claims = jwtUtil.extractAllClaims(token);
+            } catch (Exception e) {
+                // Invalid token - continue without authentication
+                userName = null;
+                claims = null;
             }
-
-            if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = service.loadUserByUsername(userName);
-
-                if (jwtUtil.validateToken(token, userDetails)) {
-                    UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(httpServletRequest));
-
-                    SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
-                }
-            }
-
-            filterChain.doFilter(httpServletRequest, httpServletResponse);
         }
+
+        if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = service.loadUserByUsername(userName);
+
+            if (jwtUtil.validateToken(token, userDetails)) {
+                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(httpServletRequest));
+
+                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+            }
+        }
+
+        filterChain.doFilter(httpServletRequest, httpServletResponse);
     }
 
     public boolean isAdmin() {

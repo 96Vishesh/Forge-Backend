@@ -11,19 +11,19 @@ import org.springframework.web.multipart.MultipartFile;
 public interface JobMatchingRest {
     
     /**
-     * Process job list JSON and return parsed jobs
+     * Process job list from JSON file and return parsed jobs
      * POST /jobs/list
      */
     @PostMapping("/list")
-    ResponseEntity<String> processJobList(@RequestBody String jobsJson);
+    ResponseEntity<String> processJobList(@RequestParam("file") MultipartFile jobsFile);
     
     /**
-     * Match resume against job listings
+     * Match resume against job listings from JSON file
      * POST /jobs/match
      */
     @PostMapping("/match")
     ResponseEntity<String> matchResumeToJobs(
-        @RequestPart("resume") MultipartFile resume,
-        @RequestPart("jobs") String jobsJson
+        @RequestParam("resume") MultipartFile resume,
+        @RequestParam("jobs") MultipartFile jobsFile
     );
 }

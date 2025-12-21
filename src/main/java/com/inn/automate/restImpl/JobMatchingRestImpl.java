@@ -1,8 +1,10 @@
 package com.inn.automate.restImpl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.inn.automate.JWT.JwtFilter;
 import com.inn.automate.REST.JobMatchingRest;
 import com.inn.automate.Service.JobMatchingService;
+import com.inn.automate.utils.AutoUtils;
 import com.inn.automate.wrapper.JobMatchResult;
 import com.inn.automate.wrapper.JobPosting;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,10 +30,26 @@ public class JobMatchingRestImpl implements JobMatchingRest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private JwtFilter jwtFilter;
+
     @Override
-    public ResponseEntity<String> processJobList(String jobsJson) {
+    public ResponseEntity<String> processJobList(MultipartFile jobsFile) {
         try {
-            log.info("Processing job list request");
+            // Check for authenticated user
+            String currentUser = jwtFilter.getCurrentUser();
+            if (currentUser == null) {
+                return AutoUtils.getResponseEntity("Unauthorized", HttpStatus.UNAUTHORIZED);
+            }
+            
+            log.info("Processing job list from file: {} for user: {}", jobsFile.getOriginalFilename(), currentUser);
+            
+            if (jobsFile.isEmpty()) {
+                return errorResponse("Jobs JSON file is required");
+            }
+            
+            // Read JSON content from file
+            String jobsJson = new String(jobsFile.getBytes(), StandardCharsets.UTF_8);
             
             List<JobPosting> jobs = jobMatchingService.processJobList(jobsJson);
             
@@ -47,18 +66,30 @@ public class JobMatchingRestImpl implements JobMatchingRest {
     }
 
     @Override
-    public ResponseEntity<String> matchResumeToJobs(MultipartFile resume, String jobsJson) {
+    public ResponseEntity<String> matchResumeToJobs(MultipartFile resume, MultipartFile jobsFile) {
         try {
-            log.info("Matching resume to jobs request");
+            // Check for authenticated user
+            String currentUser = jwtFilter.getCurrentUser();
+            if (currentUser == null) {
+                return AutoUtils.getResponseEntity("Unauthorized", HttpStatus.UNAUTHORIZED);
+            }
+            
+            log.info("Matching resume to jobs for user: {}", currentUser);
             
             if (resume.isEmpty()) {
                 return errorResponse("Resume file is required");
             }
+            if (jobsFile.isEmpty()) {
+                return errorResponse("Jobs JSON file is required");
+            }
+            
+            // Read JSON content from file
+            String jobsJson = new String(jobsFile.getBytes(), StandardCharsets.UTF_8);
             
             // Parse jobs from JSON
             List<JobPosting> jobs = jobMatchingService.processJobList(jobsJson);
             if (jobs.isEmpty()) {
-                return errorResponse("No valid jobs found in JSON");
+                return errorResponse("No valid jobs found in JSON file");
             }
             
             // Match resume against jobs
