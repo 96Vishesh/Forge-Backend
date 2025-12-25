@@ -9,13 +9,18 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     private final CustomerUsersDetailService customerUsersDetailsService;
-    private final JwtFilter jwtFilter; // Constructor-based injection
+    private final JwtFilter jwtFilter;
 
     public SecurityConfig(CustomerUsersDetailService customerUsersDetailsService, JwtFilter jwtFilter) {
         this.customerUsersDetailsService = customerUsersDetailsService;
@@ -28,18 +33,33 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-    // ✅ Fixed: Use BCryptPasswordEncoder for hashing passwords
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
+    // ✅ Add CORS Configuration
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200")); // Your Angular app
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // Disable CSRF for API endpoints
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ Enable CORS
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/scraper/**").permitAll() // Allow scraper endpoints
-                        // Granting public access to all Gemini Resume endpoints
+                        .requestMatchers("/api/scraper/**").permitAll()
                         .requestMatchers("/resume/**").permitAll()
                         .requestMatchers("/resume/health").permitAll()
                         .requestMatchers("/resume/transform").permitAll()
@@ -51,9 +71,8 @@ public class SecurityConfig {
                         .requestMatchers("/resume/upload").permitAll()
                         .requestMatchers("/resume/download").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/user/login", "/user/signup", "/user/forgotPassword").permitAll() // Allow error page
+                        .requestMatchers("/user/login", "/user/signup", "/user/forgotPassword").permitAll()
                         .anyRequest().authenticated()
-
                 );
 
         return http.build();
