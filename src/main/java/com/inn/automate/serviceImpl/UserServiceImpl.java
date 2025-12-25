@@ -62,19 +62,7 @@ public class UserServiceImpl implements UserService {
                     newUser.setPassword(passwordEncoder.encode(requestMap.get("password"))); // Encrypt password
                     userDao.save(newUser);
 
-                    // ✅ Send welcome/registration email
-                    new Thread(() -> {
-                        try {
-                            String subject = "Registration Successful - FlowForge System";
-                            String message = "Dear " + newUser.getName() +
-                                    ",\n\nYour registration was successful. You will be able to log in once an admin approves your account.\n\n" +
-                                    "Thank you,\nFlowForge Team";
 
-                            emailUtils.sendSimpleMessage(jwtFilter.getCurrentUser(), subject, message, Collections.singletonList(newUser.getEmail()));
-                        } catch (Exception e) {
-                            log.error("Failed to send registration email: ", e);
-                        }
-                    }).start();
                     return AutoUtils.getResponseEntity("Successfully Registered. Please wait for admin approval.", HttpStatus.OK);
                 } else {
                     return AutoUtils.getResponseEntity("Email already exists", HttpStatus.BAD_REQUEST);
